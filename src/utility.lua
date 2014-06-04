@@ -101,3 +101,7 @@ function sys.spawn(command_line, current_dir, wait)
 	p = nil	
 	return false
 end
+
+function table.new(n)
+	return setmetatable({}, {__index = function() return n end})
+end

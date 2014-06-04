@@ -135,7 +135,7 @@ local function main()
 				end
 
 			--检查修改痕迹(通过特征码)
-				local chars = {'\t', '    ', 'hke_', 'efl_', 'feiba', 'WCDTOF'}
+				local chars = {'\t', '    ', 'hke_', 'efl_', '_feiba', 'WCDTOF', 'ou99_'}
 				for _, char in ipairs(chars) do
 					if j:match(char) then
 						print('[警告]: 发现可疑代码,将进行进一步检查')
@@ -200,7 +200,7 @@ local function main()
 					{'_MANA', '单位法力'},
 				}
 
-				local cheats = setmetatable({}, {__index = function() return 0 end})
+				local cheats = table.new(0)
 				local cheat_count = 0
 
 				for x = 1, #ss do
@@ -219,7 +219,7 @@ local function main()
 					for name, count in pairs(cheats) do
 						table.insert(cheat_result, name .. ': ' .. count)
 					end
-					print(('[错误]: 发现可疑的敏感代码\n\t检查行数: %d\n\t%s\n\t总数: %s'):format(#ss, table.concat(cheat_result, '\n\t'), cheat_count))
+					print(('[错误]: 发现可疑的敏感代码,地图可能包含作弊代码\n\t检查行数: %d\n\t%s\n\t总数: %s'):format(#ss, table.concat(cheat_result, '\n\t'), cheat_count))
 					return true
 				else
 					print('[通过]: 未发现可疑的敏感代码')
@@ -230,10 +230,10 @@ local function main()
 			--找到指定函数域
 			local f_config = j:match("function%s+config%s+takes%s+nothing%s+returns%s+nothing(.-)endfunction")
 			--先检查是否有函数
-			if (f_config:match('InitCustomPlayerSlots') or f_config:match('SetPlayerRacePreference'))
-			and (f_config:match('InitCustomTeams') or f_config:match('SetPlayerTeam'))
-			and (f_config:match('InitAllyPriorities') or f_config:match('SetStartLocPrioCount')) then
-				print('[通过]: 在config函数中找到了指定函数')
+			if (f_config:match('SetPlayerRacePreference') or j:match('%sInitCustomPlayerSlots%s') or not j:match('SetPlayerRacePreference'))
+			and (f_config:match('PLAYER_STATE_ALLIED_VICTORY') or j:match('%sInitCustomTeams%s') or not j:match('PLAYER_STATE_ALLIED_VICTORY'))
+			and (f_config:match('SetStartLocPrioCount') or j:match('%sInitAllyPriorities%s') or not j:match('SetStartLocPrioCount')) then
+				print('[通过]: 找到了指定config函数')
 			else
 				print('[错误]: config函数被混淆')
 				return true
@@ -241,25 +241,149 @@ local function main()
 
 		--检查w3i文件与j文件的队伍设置是否匹配
 			--记录j文件中的队伍设置
-				local j_players, j_teams, j_player_control, j_player_team, f_now = 0, 0, {}, {}
-				j_players = tonumber(f_config:match('SetPlayers.-(%d+)'))
-				j_teams = tonumber(f_config:match('SetTeams.-(%d+)'))
+				local j_players, j_teams, j_player_control, j_player_team, f_now = 0, 0, {}, table.new(0)
+				do
+					--重载tonumber,为了那该死的十六进制
+					local oldtonumber = tonumber
+
+					local function tonumber(e, b)
+						local flag
+						if e:sub(1, 1) == '$' then
+							flag = true
+							e = e:sub(2)
+						elseif e:sub(1, 2) == '0x' then
+							flag = true
+							e = e:sub(3)
+						end
+						if flag then
+							local char = '123456789ABCDEF'
+							local char2 = table.new(0)
+							for i = 1, #char do
+								char2[char:sub(i, i)] = i
+								char2[char:sub(i, i):lower()] = i
+							end
+							local r = 0
+							local q = 1
+							for i = #e, 1, -1 do
+								r = r + char2[e:sub(i, i)] * q
+								q = q * 16
+							end
+							e = r
+						end
+						return oldtonumber(e, b)
+					end
+					
+					j_players = math.min(12, tonumber(f_config:match('SetPlayers.-([%$%w]+)')))
+					j_teams = math.min(12, tonumber(f_config:match('SetTeams.-([%$%w]+)')))
+					
+					f_now = f_config:match('InitCustomPlayerSlots') and j:match("function%s+InitCustomPlayerSlots%s+takes%s+nothing%s+returns%s+nothing(.-)endfunction") or f_config
+					for i, t in f_now:gmatch('SetPlayerController.-Player.-([%$%w]+).-([%u_]+)') do
+						i= tonumber(i)
+						j_player_control[i] = t
+					end
 				
-				f_now = f_config:match('InitCustomPlayerSlots') and j:match("function%s+InitCustomPlayerSlots%s+takes%s+nothing%s+returns%s+nothing(.-)endfunction") or f_config
-				for i, t in f_now:gmatch('SetPlayerController.-Player.-(%d+).-([%u_]+)') do
-					j_player_control[i] = t
-				end
-			
-				f_now = f_config:match('InitCustomTeams') and j:match("function%s+InitCustomTeams%s+takes%s+nothing%s+returns%s+nothing(.-)endfunction") or f_config
-				for i, t in f_now:gmatch('SetPlayerTeam.-Player.-(%d+).-(%d+)') do
-					j_player_team[i] = t
+					f_now = f_config:match('InitCustomTeams') and j:match("function%s+InitCustomTeams%s+takes%s+nothing%s+returns%s+nothing(.-)endfunction") or f_config
+					for i, t in f_now:gmatch('SetPlayerTeam.-Player.-([%$%w]+).-([%$%w]+)') do
+						i, t = tonumber(i), tonumber(t)
+						j_player_team[i] = t
+					end
 				end
 
+				print('[成功]: 分析j文件中的玩家设置')
+
+			--记录w3i文件中的队伍设置
+				local w3i_players, w3i_teams, w3i_player_control, w3i_player_team, w3i_now = 0, 0, {}, table.new(0)
+
+				local function w3i_addTeam(players, x)
+					--print(players, x)
+					for i = 11, 0, -1 do
+						if players >= 2 ^ i then
+							players = players - 2 ^ i
+							w3i_player_team[i] = x
+							--print(i)
+						end
+					end
+				end
+				
+				--找到玩家设置的偏移
+				local x, y, byte = w3i:find(string.char(0xff) .. '(%Z)%z%z%z.%z%z%z.%z%z%z.%z%z%z.%z%z%z%Z-%z')
+				w3i_players = tonumber(byte:byte())
+				
+				--从这里开始是玩家数据
+				w3i_now = w3i:sub(x + 5)
+
+				local controls = {
+					'MAP_CONTROL_USER',
+					'MAP_CONTROL_COMPUTER',
+					'MAP_CONTROL_NEUTRAL',
+					'MAP_CONTROL_RESCUABLE',
+				}
+				--匹配玩家控制者
+				local x = -1
+				for i, t, name in w3i_now:gmatch('(.)%z%z%z(.)%z%z%z.%z%z%z.%z%z%z(%Z-)%z................') do
+					i, t = i:byte(), t:byte()
+					if i > x then
+						w3i_player_control[i] = controls[t]
+						x = i
+					end
+				end
+
+				--匹配队伍信息
+					x = 0
+					--先处理第一个队伍信息,比较特殊
+					local _, y, teams, w1, w2, teamname = w3i_now:find('(.)%z%z%z.%z%z%z(.)(.)' .. string.char(0xff, 0xff) .. '(%Z-)%z')
+					w3i_teams = teams:byte()
+					local players = (w1:byte() + w2:byte() * 0x100) - 0xf000
+					w3i_addTeam(players, x)
+					--开始处理后面的队伍,如果有的话
+					if w3i_teams > 1 then
+						--从这里开始是后面的队伍数据
+						w3i_now = w3i_now:sub(y + 1)
+						for w1, w2 in w3i_now:gmatch('.%z%z%z(.)(.)..%Z-%z') do
+							x = x + 1
+							if x >= w3i_teams then
+								break
+							end
+							local players = (w1:byte() + w2:byte() * 0x100)
+							w3i_addTeam(players, x)
+						end
+					end
+
+					print('[成功]: 分析w3i文件中的玩家设置')
+
+			--开始对比j与w3i
+			print('[成功]: 开始对比j文件与w3i文件中的玩家设置')
+
+			if j_players ~= w3i_players then
+				print(('[错误]: 玩家数量不匹配(%s - %s)'):format(j_players, w3i_players))
+				return true
+			end
+
+			--[[
+			---不检查teams,因为config函数中的SetTeams不准确
+			if j_teams ~= w3i_teams then
+				print(('[错误]: 队伍数量不匹配(%s - %s)'):format(j_teams, w3i_teams))
+				return true
+			end
+			--]]
+
+			for i = 0, 11 do
+				if j_player_control[i] ~= w3i_player_control[i] then
+					print(('[错误]: 玩家控制者不匹配(玩家%s:%s - %s)'):format(i, j_player_control[i], w3i_player_control[i]))
+					return true
+				end
+
+				if j_player_team[i] ~= w3i_player_team[i] and j_player_control[i] then
+					print(('[错误]: 玩家队伍不匹配(玩家%s:%s - %s)'):format(i, j_player_team[i], w3i_player_team[i]))
+					return true
+				end
+			end
+
+		print('[通过]: j文件与w3i文件中的玩家设置匹配')
 	--完成
-	print('[通过]: 用时 ' .. os.clock() .. ' 秒')
+	print('[通过]: 地图检查完毕,用时 ' .. os.clock() .. ' 秒')
 	
 end
 
 if main() then
-	os.execute('pause')
 end
