@@ -47,7 +47,7 @@ local function main()
 		--检查文件名长度
 		if #map_name > 27 then
 			print('[错误]: 文件名过长,不能大于27个字符: ' .. #map_name)
-			return
+			return true
 		else
 			print('[通过]: 文件名长度为: ' .. #map_name)
 		end
@@ -63,7 +63,7 @@ local function main()
 			for i = 1, #map_name do
 				if not t[map_name:sub(i, i)] then
 					print('[错误]: 文件名包含非法字符: ' .. map_name:sub(i, i))
-					return
+					return true
 				end
 			end
 			print('[通过]: 文件名可以使用')
@@ -74,7 +74,7 @@ local function main()
 		print('[成功]: 打开 ' .. input_map:string())
 	else
 		print('[错误]: 打开 ' .. input_map:string() .. ' ,加密了字头?')
-		return
+		return true
 	end
 	
 	--需要导出的文件
@@ -109,7 +109,7 @@ local function main()
 		print('[成功]: 打开j文件')
 	else
 		print('[错误]: 没有找到j文件')
-		return
+		return true
 	end
 	if f_w3i then
 		w3i = f_w3i:read('*a')
@@ -117,7 +117,7 @@ local function main()
 		print('[成功]: 打开w3i文件')
 	else
 		print('[错误]: 没有找到w3i文件')
-		return
+		return true
 	end
 
 	--检查起来
@@ -147,9 +147,28 @@ local function main()
 			--进行进一步检查
 			if mod then
 				local ss = {} --存放可疑代码
+				local lines = {} --行数
+				local count = 0 --存放'\t'和'    '的计数
 				for line in io.lines((test_dir / 'war3map.j'):string()) do
+					table.insert(lines, line)
+					if line:match('\t') or line:match('    ') then
+						count = count + 1
+					end
+				end
+
+				if count / #lines > 0.5 then
+					print('[注意]: 地图脚本可能没有进行优化: ' .. (count / #lines))
+					table.remove(chars, 1)
+					table.remove(chars, 1)
+				elseif count / #lines > 0.1 then
+					print('[注意]: 发现大量制表符与空格,请手动检查地图是否进行过优化: ' .. (count / #lines))
+				end
+
+				for _, line in ipairs(lines) do
 					for _, char in ipairs(chars) do
-						if line:match(char) then
+						local x = line:find(char)
+						if x and (x == 1 or (char ~= '\t' and char ~= '    ')) then
+							print(('[%s]: %s'):format(char, line))
 							table.insert(ss, line)
 							break
 						end
@@ -201,7 +220,7 @@ local function main()
 						table.insert(cheat_result, name .. ': ' .. count)
 					end
 					print(('[错误]: 发现可疑的敏感代码\n\t检查行数: %d\n\t%s\n\t总数: %s'):format(#ss, table.concat(cheat_result, '\n\t'), cheat_count))
-					return
+					return true
 				else
 					print('[通过]: 未发现可疑的敏感代码')
 				end
@@ -209,27 +228,38 @@ local function main()
 
 		--检查InitCustomPlayerSlots,InitCustomTeams,InitAllyPriorities这3个函数是否被混淆
 			--找到指定函数域
-			local f_config = j:match("function config takes nothing returns nothing(.-)endfunction")
+			local f_config = j:match("function%s+config%s+takes%s+nothing%s+returns%s+nothing(.-)endfunction")
 			--先检查是否有函数
-			if (f_config:find('InitCustomPlayerSlots') or f_config:find('SetPlayerRacePreference'))
-			and (f_config:find('InitCustomTeams') or f_config:find('SetPlayerTeam'))
-			and (f_config:find('InitAllyPriorities') or f_config:find('SetStartLocPrioCount')) then
+			if (f_config:match('InitCustomPlayerSlots') or f_config:match('SetPlayerRacePreference'))
+			and (f_config:match('InitCustomTeams') or f_config:match('SetPlayerTeam'))
+			and (f_config:match('InitAllyPriorities') or f_config:match('SetStartLocPrioCount')) then
 				print('[通过]: 在config函数中找到了指定函数')
 			else
 				print('[错误]: config函数被混淆')
-				return
+				return true
 			end
 
 		--检查w3i文件与j文件的队伍设置是否匹配
+			--记录j文件中的队伍设置
+				local j_players, j_teams, j_player_control, j_player_team, f_now = 0, 0, {}, {}
+				j_players = tonumber(f_config:match('SetPlayers.-(%d+)'))
+				j_teams = tonumber(f_config:match('SetTeams.-(%d+)'))
+				
+				f_now = f_config:match('InitCustomPlayerSlots') and j:match("function%s+InitCustomPlayerSlots%s+takes%s+nothing%s+returns%s+nothing(.-)endfunction") or f_config
+				for i, t in f_now:gmatch('SetPlayerController.-Player.-(%d+).-([%u_]+)') do
+					j_player_control[i] = t
+				end
 			
+				f_now = f_config:match('InitCustomTeams') and j:match("function%s+InitCustomTeams%s+takes%s+nothing%s+returns%s+nothing(.-)endfunction") or f_config
+				for i, t in f_now:gmatch('SetPlayerTeam.-Player.-(%d+).-(%d+)') do
+					j_player_team[i] = t
+				end
 
 	--完成
 	print('[通过]: 用时 ' .. os.clock() .. ' 秒')
-
-	return true
 	
 end
 
-if not main() then
-	os.execute('@pause')
+if main() then
+	os.execute('pause')
 end
