@@ -3,6 +3,7 @@ local function main()
 	--检查参数 arg[1]为地图, arg[2]为本地路径
 	if (not arg) or (#arg < 2) then
 		print('[错误]: 请将地图拖动到check.bat上进行检验')
+		return
 	end
 	
 	local input_map  = arg[1]
@@ -43,17 +44,19 @@ local function main()
 	
 	print('[地图]: ' .. map_name)
 
+	local fail
+	
 	--校验文件名
 		--检查文件名长度
 		if #map_name > 27 then
 			print('[错误]: 文件名过长,不能大于27个字符: ' .. #map_name)
-			return true
+			fail = true
 		else
 			print('[通过]: 文件名长度为: ' .. #map_name)
 		end
 
 		--检查是否包含非法字符
-			local chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ._0123456789()'
+			local chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ._0123456789() '
 			--建立反向
 			local t = {}
 			for i = 1, #chars do
@@ -63,7 +66,7 @@ local function main()
 			for i = 1, #map_name do
 				if not t[map_name:sub(i, i)] then
 					print('[错误]: 文件名包含非法字符: ' .. map_name:sub(i, i))
-					return true
+					fail = true
 				end
 			end
 			print('[通过]: 文件名可以使用')
@@ -73,7 +76,7 @@ local function main()
 	if inmap then
 		print('[成功]: 打开 ' .. input_map:string())
 	else
-		print('[错误]: 打开 ' .. input_map:string() .. ' ,加密了字头?')
+		print('[错误]: 打开 ' .. input_map:string() .. ' ,文件被占用或加密了字头?')
 		return true
 	end
 	
@@ -143,7 +146,7 @@ local function main()
 						break
 					end
 				end
-
+			
 			--进行进一步检查
 			if mod then
 				local ss = {} --存放可疑代码
@@ -220,7 +223,7 @@ local function main()
 						table.insert(cheat_result, name .. ': ' .. count)
 					end
 					print(('[错误]: 发现可疑的敏感代码,地图可能包含作弊代码\n\t检查行数: %d\n\t%s\n\t总数: %s'):format(#ss, table.concat(cheat_result, '\n\t'), cheat_count))
-					return true
+					fail = true
 				else
 					print('[通过]: 未发现可疑的敏感代码')
 				end
@@ -236,7 +239,7 @@ local function main()
 				print('[通过]: 找到了指定config函数')
 			else
 				print('[错误]: config函数被混淆')
-				return true
+				fail = true
 			end
 
 		--检查w3i文件与j文件的队伍设置是否匹配
@@ -355,33 +358,36 @@ local function main()
 			print('[成功]: 开始对比j文件与w3i文件中的玩家设置')
 
 			if j_players ~= w3i_players then
-				print(('[错误]: 玩家数量不匹配(%s - %s)'):format(j_players, w3i_players))
-				return true
+				print(('[错误]: 玩家数量不匹配(%s[j] - %s[w3i])'):format(j_players, w3i_players))
+				fail = true
 			end
 
 			--[[
 			---不检查teams,因为config函数中的SetTeams不准确
 			if j_teams ~= w3i_teams then
-				print(('[错误]: 队伍数量不匹配(%s - %s)'):format(j_teams, w3i_teams))
-				return true
+				print(('[错误]: 队伍数量不匹配(%s[j] - %s[w3i])'):format(j_teams, w3i_teams))
+				fail = true
 			end
 			--]]
 
 			for i = 0, 11 do
 				if j_player_control[i] ~= w3i_player_control[i] then
-					print(('[错误]: 玩家控制者不匹配(玩家%s:%s - %s)'):format(i, j_player_control[i], w3i_player_control[i]))
-					return true
+					print(('[错误]: 玩家控制者不匹配(玩家%s:%s[j] - %s[w3i])'):format(i, j_player_control[i], w3i_player_control[i]))
+					fail = true
 				end
 
 				if j_player_team[i] ~= w3i_player_team[i] and j_player_control[i] then
-					print(('[错误]: 玩家队伍不匹配(玩家%s:%s - %s)'):format(i, j_player_team[i], w3i_player_team[i]))
-					return true
+					print(('[错误]: 玩家队伍不匹配(玩家%s:%s[j] - %s[w3i])'):format(i, j_player_team[i], w3i_player_team[i]))
+					fail = true
 				end
 			end
 
-		print('[通过]: j文件与w3i文件中的玩家设置匹配')
 	--完成
-	print('[通过]: 地图检查完毕,用时 ' .. os.clock() .. ' 秒')
+	if fail then
+		print('[错误]: 地图有问题无法上传,用时 ' .. os.clock() .. ' 秒')
+	else
+		print('[通过]: 地图检查完毕,用时 ' .. os.clock() .. ' 秒')
+	end
 	
 end
 
