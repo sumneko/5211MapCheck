@@ -48,6 +48,7 @@ local function main()
 	
 	--校验文件名
 		--检查文件名长度
+		local enable = true
 		if #map_name > 27 then
 			print('[错误]: 文件名过长,不能大于27个字符: ' .. #map_name)
 			fail = true
@@ -63,13 +64,28 @@ local function main()
 				t[chars:sub(i, i)] = true
 			end
 
+			local ws = {}
 			for i = 1, #map_name do
 				if not t[map_name:sub(i, i)] then
-					print('[错误]: 文件名包含非法字符: ' .. map_name:sub(i, i))
-					fail = true
+					table.insert(ws, map_name:sub(i, i))
 				end
 			end
-			print('[通过]: 文件名可以使用')
+
+			if #ws > 0 then
+				print('[错误]: 文件名包含非法字符: ' .. table.concat(ws))
+				fail = true
+				enable = false
+			end
+			
+			if map_name:find('  ') then
+				print('[错误]: 文件名不能包含2个连续的空格')
+				fail = true
+				enable = false
+			end
+			
+			if enable then
+				print('[通过]: 文件名可以使用')
+			end
 
 	--打开地图
 	local inmap = mpq_open(input_map)
@@ -356,10 +372,11 @@ local function main()
 
 			--开始对比j与w3i
 			print('[成功]: 开始对比j文件与w3i文件中的玩家设置')
-
+			local enable = true
 			if j_players ~= w3i_players then
 				print(('[错误]: 玩家数量不匹配(%s[j] - %s[w3i])'):format(j_players, w3i_players))
 				fail = true
+				enable = false
 			end
 
 			--[[
@@ -374,12 +391,18 @@ local function main()
 				if j_player_control[i] ~= w3i_player_control[i] then
 					print(('[错误]: 玩家控制者不匹配(玩家%s:%s[j] - %s[w3i])'):format(i, j_player_control[i], w3i_player_control[i]))
 					fail = true
+					enable = false
 				end
 
 				if j_player_team[i] ~= w3i_player_team[i] and j_player_control[i] then
 					print(('[错误]: 玩家队伍不匹配(玩家%s:%s[j] - %s[w3i])'):format(i, j_player_team[i], w3i_player_team[i]))
 					fail = true
+					enable = false
 				end
+			end
+
+			if enable then
+				print('[通过]: 玩家与队伍设置匹配')
 			end
 
 	--完成
