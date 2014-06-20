@@ -82,6 +82,12 @@ local function main()
 				fail = true
 				enable = false
 			end
+
+			if map_name:find('%D%.') or map_name:find('%.%D') then
+				print('[错误]: 小数点前后必须是数字')
+				fail = true
+				enable = false
+			end
 			
 			if enable then
 				print('[通过]: 文件名可以使用')
@@ -155,6 +161,14 @@ local function main()
 
 			--检查修改痕迹(通过特征码)
 				local chars = {'\t', '    ', 'hke_', 'efl_', '_feiba', 'WCDTOF', 'ou99_'}
+
+			--动态添加特征码
+				local v_name = j:match('string%s+(%a+)%C-Hke')
+				if v_name then
+					print('[警告]: 发现HKE关键字')
+					table.insert(chars, v_name)
+				end
+				
 				for _, char in ipairs(chars) do
 					if j:match(char) then
 						print('[警告]: 发现可疑代码,将进行进一步检查')
