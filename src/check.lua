@@ -148,6 +148,7 @@ local function main()
 	--检查起来
 		--检查注入脚本式作弊
 			local mod = false
+			local ss = {} --存放可疑代码
 			--检查修改痕迹(通过listfile)
 				local f_listfile = io.open((test_dir / '(listfile)'):string(), 'r')
 				if f_listfile then
@@ -156,6 +157,48 @@ local function main()
 					if listfile:match('war3map.j') then
 						print('[警告]: 发现修改痕迹,将进行进一步检查')
 						mod = true
+					end
+				end
+
+			--检车修改痕迹(通过YDWE库函数上方是否有代码判定)
+				local text = j:match('endglobals(.-)__allocate')
+				if text and #text > 50 then
+					print('[警告]: 发现注入痕迹,将进行进一步检查')
+					local main_func = j:match('function main takes nothing returns nothing(.-)endfunction')
+					local call_funcs = {}
+					for func in main_func:gmatch('call (.-)%(') do
+						table.insert(call_funcs, func)
+					end
+
+					local funcs_finded = {}
+					local check_stack
+					
+					function check_stack(func)
+						if funcs_finded[func] then
+							return
+						end
+						funcs_finded[func] = true
+						local func_text = text:match('(function ' .. func .. ' takes.-endfunction)')
+						if func_text then
+							for func in func_text:gmatch('call (.-)%( ') do
+								check_stack(func)
+							end
+							for func in func_text:gmatch('function (.-)%)') do
+								check_stack(func)
+							end
+							for line in func_text:gmatch('([^\n\r]+)') do
+								print(('[%s]: %s\n'):format('注入', line))
+								table.insert(ss, line)
+							end
+							return true
+						end
+					end
+					
+					for i = #call_funcs, 1, -1 do
+						local func_name = call_funcs[i]
+						if not check_stack(func_name) then
+							break
+						end
 					end
 				end
 
@@ -179,7 +222,6 @@ local function main()
 			
 			--进行进一步检查
 			if mod then
-				local ss = {} --存放可疑代码
 				local lines = {} --行数
 				local count = 0 --存放'\t'和'    '的计数
 				for line in io.lines((test_dir / 'war3map.j'):string()) do
