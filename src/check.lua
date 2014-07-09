@@ -159,44 +159,53 @@ local function main()
 						mod = true
 					end
 				end
-
-			--检车修改痕迹(通过YDWE库函数上方是否有代码判定)
-				local text = j:match('endglobals(.-)__allocate')
+				
+			--检查修改痕迹(通过main函数底部是否有代码判定)
+				local text = j:match('%cendglobals(.-)function main takes')
 				if text and #text > 50 then
-					print('[警告]: 发现注入痕迹,将进行进一步检查')
 					local main_func = j:match('function main takes nothing returns nothing(.-)endfunction')
 					local call_funcs = {}
 					for func in main_func:gmatch('call (.-)%(') do
 						table.insert(call_funcs, func)
 					end
 
-					local funcs_finded = {}
+					local funcs_finded = {InitGlobals = 2, InitCustomTriggers = 2, RunInitializationTriggers = 2, TriggerAddAction = 0, ExecuteFunc = 0}
 					local check_stack
+
+					if not j:match('function RunInitializationTriggers takes nothing returns nothing') then
+						funcs_finded.ConditionalTriggerExecute = 2
+					end
 					
 					function check_stack(func)
 						if funcs_finded[func] then
-							return
+							return funcs_finded[func]
 						end
-						funcs_finded[func] = true
+						
+						funcs_finded[func] = 1
 						local func_text = text:match('(function ' .. func .. ' takes.-endfunction)')
 						if func_text then
-							for func in func_text:gmatch('call (.-)%( ') do
-								check_stack(func)
+							for func in func_text:gmatch('[^%c%w_]([%w_]-)%(') do
+								if check_stack(func) == 2 then
+									return 2
+								end
 							end
-							for func in func_text:gmatch('function (.-)%)') do
-								check_stack(func)
+							for func in func_text:gmatch('function ([%w_]-)%)') do
+								if check_stack(func) == 2 then
+									return 2
+								end
 							end
 							for line in func_text:gmatch('([^\n\r]+)') do
 								print(('[%s]: %s\n'):format('注入', line))
 								table.insert(ss, line)
 							end
-							return true
+							return
 						end
+						return 0
 					end
 					
 					for i = #call_funcs, 1, -1 do
 						local func_name = call_funcs[i]
-						if not check_stack(func_name) then
+						if check_stack(func_name) == 2 or check_stack(func_name) == 0 then
 							break
 						end
 					end
