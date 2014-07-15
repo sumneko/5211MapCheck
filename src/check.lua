@@ -169,11 +169,15 @@ local function main()
 						table.insert(call_funcs, func)
 					end
 
-					local funcs_finded = {InitGlobals = 2, InitCustomTriggers = 2, RunInitializationTriggers = 2, TriggerAddAction = 0, ExecuteFunc = 0}
+					local funcs_finded = {InitGlobals = 2, InitCustomTriggers = 2, RunInitializationTriggers = 2, TriggerAddAction = 0, ExecuteFunc = 0, CreateDestructableZ = 0}
 					local check_stack
 
-					if not j:match('function RunInitializationTriggers takes nothing returns nothing') then
+					if not j:match('function RunInitializationTriggers takes') then
 						funcs_finded.ConditionalTriggerExecute = 2
+					end
+
+					if not j:match('function InitCustomTriggers takes') then
+						funcs_finded.TriggerAddAction = 2
 					end
 					
 					function check_stack(func)
@@ -235,16 +239,16 @@ local function main()
 				local count = 0 --存放'\t'和'    '的计数
 				for line in io.lines((test_dir / 'war3map.j'):string()) do
 					table.insert(lines, line)
-					if line:match('\t') or line:match('    ') then
+					if line:match('\t') or line:match('    ') or line:match('//') then
 						count = count + 1
 					end
 				end
 
-				if count / #lines > 0.5 then
+				if count / #lines > 0.25 then
 					print('[注意]: 地图脚本可能没有进行优化: ' .. (count / #lines))
 					table.remove(chars, 1)
 					table.remove(chars, 1)
-				elseif count / #lines > 0.1 then
+				elseif count / #lines > 0.05 then
 					print('[注意]: 发现大量制表符与空格,请手动检查地图是否进行过优化: ' .. (count / #lines))
 				end
 
