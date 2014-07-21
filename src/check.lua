@@ -175,14 +175,14 @@ local function main()
 					if not j:match('function RunInitializationTriggers takes') then
 						funcs_finded.ConditionalTriggerExecute = 2
 					end
-
-					if not j:match('function InitCustomTriggers takes') then
-						funcs_finded.TriggerAddAction = 2
-					end
 					
 					function check_stack(func)
 						if funcs_finded[func] then
 							return funcs_finded[func]
+						end
+
+						if func:sub(1, 9) == 'InitTrig_' then
+							return 1
 						end
 						
 						funcs_finded[func] = 1
