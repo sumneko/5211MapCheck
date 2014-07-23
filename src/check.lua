@@ -93,6 +93,11 @@ local function main()
 				print('[通过]: 文件名可以使用')
 			end
 
+	--去掉文件的只读属性
+	if 0 == bit32.band(input_map:permissions(nil), 128) then		
+		input_map:permissions(bit32.bor(0x1000, 128))
+	end
+
 	--打开地图
 	local inmap = mpq_open(input_map)
 	if inmap then
