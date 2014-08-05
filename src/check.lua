@@ -164,6 +164,70 @@ local function main()
 						mod = true
 					end
 				end
+
+			--检查修改痕迹(通过InitTrig函数顺序)
+				local trg_funcs = {}
+				local trg_inits = {}
+
+				for name in j:gmatch('function InitTrig_(%S-) takes') do
+					table.insert(trg_funcs, name)
+				end
+
+				for name in j:gmatch('call InitTrig_(%C-)%(%)') do
+					table.insert(trg_inits, name)
+				end
+
+				local funcs = {}
+				local x, y = 1, 1
+				while trg_funcs[x] or trg_inits[y] do
+					if trg_funcs[x] ~= trg_inits[y] then
+						local func1, func2 = trg_funcs[x], trg_inits[y]
+						if func1 then
+							for i = y, #trg_inits do
+								if func1 == trg_inits[i] then
+									for j = y, i - 1 do
+										table.insert(funcs, trg_inits[j])
+									end
+									y = i
+								end
+							end
+						else
+							for i = x, #trg_funcs do
+								if func2 == trg_funcs[i] then
+									for j = x, i - 1 do
+										table.insert(funcs, trg_funcs[j])
+									end
+									x = i
+									break
+								end
+							end
+						end
+					end
+					x = x + 1
+					y = y + 1
+				end
+
+				if #funcs ~= 0 then
+					print('[警告]: 发现可疑函数,将进行进一步检查')
+					for _, name in ipairs(funcs) do
+						funcs[name] = true
+						funcs['InitTrig_' .. name] = true
+						funcs['Trig_' .. name .. 'Actions'] = true
+						funcs['Trig_' .. name .. 'Conditions'] = true
+						funcs['Trig_' .. name .. '_Actions'] = true
+						funcs['Trig_' .. name .. '_Conditions'] = true
+					end
+					for name, content in j:gmatch('function (%S-) takes(.-)endfunction') do
+						if funcs[name] then
+							content = ('function %s takes%s'):format(name, content)
+							for line in content:gmatch('([^\n\r]+)') do
+								print(('[%s]: %s\n'):format('注入', line))
+								table.insert(ss, line)
+							end
+						end
+					end
+				end
+				
 				
 			--检查修改痕迹(通过main函数底部是否有代码判定)
 				local text = j:match('%cendglobals(.-)function main takes')
