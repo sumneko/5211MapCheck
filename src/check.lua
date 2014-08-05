@@ -163,6 +163,12 @@ local function main()
 						print('[警告]: 发现修改痕迹,将进行进一步检查')
 						mod = true
 					end
+					listfile = listfile:lower()
+					if listfile:match('loading') or listfile:match('screen') then
+						print('=================================================')
+						print('[警告]: 可能替换了载入图')
+						print('=================================================')
+					end
 				end
 
 			--检查修改痕迹(通过InitTrig函数顺序)
@@ -179,7 +185,7 @@ local function main()
 
 				local funcs = {}
 				local x, y = 1, 1
-				while trg_funcs[x] or trg_inits[y] do
+				while trg_funcs[x] and trg_inits[y] do
 					if trg_funcs[x] ~= trg_inits[y] then
 						local func1, func2 = trg_funcs[x], trg_inits[y]
 						if func1 then
@@ -285,7 +291,7 @@ local function main()
 				end
 
 			--检查修改痕迹(通过特征码)
-				local chars = {'\t', '    ', 'hke_', 'efl_', '_feiba', 'WCDTOF', 'ou99_'}
+				local chars = {'\t', '    ', 'hke_', 'efl_', '_feiba', 'WCDTOF', 'ou99_', '55you'}
 
 			--动态添加特征码
 				local v_name = j:match('string%s+(%a+)%C-Hke')
@@ -545,7 +551,9 @@ local function main()
 
 	--完成
 	if fail then
+		print('=================================================')
 		print('[错误]: 地图有问题无法上传,用时 ' .. os.clock() .. ' 秒')
+		print('=================================================')
 	else
 		print('[通过]: 地图检查完毕,用时 ' .. os.clock() .. ' 秒')
 	end
