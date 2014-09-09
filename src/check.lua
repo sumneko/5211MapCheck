@@ -164,11 +164,13 @@ local function main()
 						mod = true
 					end
 					listfile = listfile:lower()
+					--[[
 					if listfile:match('loading') or listfile:match('screen') then
 						print('=================================================')
 						print('[警告]: 可能替换了载入图')
 						print('=================================================')
 					end
+					--]]
 				end
 
 			--检查修改痕迹(通过InitTrig函数顺序)
@@ -549,6 +551,24 @@ local function main()
 				print('[通过]: 玩家与队伍设置匹配')
 			end
 
+	print('')
+	--一些数据检查
+	local ver_124		= j:match('hashtable')
+	local ver_120		= j:match('return h%c+return 0')
+	local has_record	= j:match('11SAV@')
+
+	if ver_124 then
+		print('[注意]: 地图版本为1.24')
+	end
+	if ver_120 then
+		print('[注意]: 地图版本为1.20')
+	end
+	if has_record then
+		print('[注意]: 地图有新积分')
+	end
+
+	print('')
+	
 	--完成
 	if fail then
 		print('=================================================')
