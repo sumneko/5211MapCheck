@@ -327,6 +327,14 @@ local function main()
 					table.remove(chars, 1)
 				elseif count / #lines > 0.05 then
 					print('[注意]: 发现大量制表符与空格,请手动检查地图是否进行过优化: ' .. (count / #lines))
+				else
+					--检查风格不同的代码
+					for _, line in ipairs(lines) do
+						local char	= line:match '([%w_]+)%s+%='
+						if char then
+							table.insert(chars, char)
+						end
+					end
 				end
 
 				for _, line in ipairs(lines) do
@@ -363,6 +371,7 @@ local function main()
 					{'_LUMBER', '玩家木材'},
 					{'_LIFE', '单位生命'},
 					{'_MANA', '单位法力'},
+					{'PingMinimap', '标记地图'}
 				}
 
 				local cheats = table.new(0)
