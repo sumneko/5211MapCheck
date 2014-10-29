@@ -278,6 +278,7 @@ local function main()
 							for line in func_text:gmatch('([^\n\r]+)') do
 								print(('[%s]: %s\n'):format('注入', line))
 								table.insert(ss, line)
+								mod	= true
 							end
 							return
 						end
@@ -330,7 +331,7 @@ local function main()
 				else
 					--检查风格不同的代码
 					for _, line in ipairs(lines) do
-						local char	= line:match '([%w_]+)%s+%='
+						local char	= line:match '%s+([%w_]+)%s+%='
 						if char then
 							table.insert(chars, char)
 						end
