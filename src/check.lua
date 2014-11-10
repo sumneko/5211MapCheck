@@ -330,9 +330,10 @@ local function main()
 					print('[注意]: 发现大量制表符与空格,请手动检查地图是否进行过优化: ' .. (count / #lines))
 				else
 					--检查风格不同的代码
-					for _, line in ipairs(lines) do
-						local char	= line:match '%s+([%w_]+)%s+%='
+					for i, line in ipairs(lines) do
+						local char	= line:match '[^.][%w_]+%s+([%w_]+)%s+%='
 						if char then
+							print(('[注意]: 发现可疑变量: (%s)[%s]%s'):format(i, char, line))
 							table.insert(chars, char)
 						end
 					end
