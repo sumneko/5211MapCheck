@@ -331,8 +331,8 @@ local function main()
 				else
 					--检查风格不同的代码
 					for i, line in ipairs(lines) do
-						local char	= line:match '[^.][%w_]+%s+([%w_]+)%s+%='
-						if char then
+						local char	= line:match '[^.][%w_]+%s+([%w_]+)%s+%=[^%=]'
+						if char and char:sub(1, 1):match '%D' then
 							print(('[注意]: 发现可疑变量: (%s)[%s]%s'):format(i, char, line))
 							table.insert(chars, char)
 						end
