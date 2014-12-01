@@ -57,7 +57,7 @@ local function main()
 		end
 
 		--检查是否包含非法字符
-			local chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ._0123456789() '
+			local chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ._0123456789'
 			--建立反向
 			local t = {}
 			for i = 1, #chars do
