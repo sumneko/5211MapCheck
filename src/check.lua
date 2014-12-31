@@ -334,7 +334,7 @@ local function main()
 						local char	= line:match '[^.][%w_]+%s+([%w_]+)%s+%=[^%=]'
 						if char and char:sub(1, 1):match '%D' then
 							print(('[注意]: 发现可疑变量: (%s)[%s]%s'):format(i, char, line))
-							table.insert(chars, char)
+							table.insert(chars, '%W' .. char .. '%W')
 						end
 					end
 				end
