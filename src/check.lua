@@ -246,7 +246,14 @@ local function main()
 						table.insert(call_funcs, func)
 					end
 
-					local funcs_finded = {InitGlobals = 2, InitCustomTriggers = 2, RunInitializationTriggers = 2, TriggerAddAction = 0, ExecuteFunc = 0, CreateDestructableZ = 0}
+					local funcs_finded = {
+						InitGlobals = 2,
+						InitCustomTriggers = 2,
+						RunInitializationTriggers = 2,
+						--TriggerAddAction = 0,
+						--ExecuteFunc = 0,
+						--CreateDestructableZ = 0
+					}
 					local check_stack
 
 					if not j:match('function RunInitializationTriggers takes') then
